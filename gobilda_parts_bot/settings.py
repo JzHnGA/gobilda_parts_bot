@@ -67,23 +67,29 @@ ITEM_PIPELINES = {
 	'scrapy.pipelines.files.FilesPipeline': 1
 }
 
-FILES_STORE = 'models'
+FILES_STORE = 'models.nosync'
 
 # Change filenames to be just SKUs instead of long product names
 # can be useful because Fusion refuses to upload files if their
 # names are too long. uses sku if True, full name if False.
 SKU_FILE_NAMES = False
 
+# Follow redirects on CAD downloads and retry failed requests harder,
+# so no part is lost to a transient error
+MEDIA_ALLOW_REDIRECTS = True
+RETRY_TIMES = 5
+
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
-#AUTOTHROTTLE_ENABLED = True
+# Enabled: the site starts timing out after a few hundred rapid requests
+AUTOTHROTTLE_ENABLED = True
 # The initial download delay
-#AUTOTHROTTLE_START_DELAY = 5
+AUTOTHROTTLE_START_DELAY = 1
 # The maximum download delay to be set in case of high latencies
-#AUTOTHROTTLE_MAX_DELAY = 60
+AUTOTHROTTLE_MAX_DELAY = 30
 # The average number of requests Scrapy should be sending in parallel to
 # each remote server
-#AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
+AUTOTHROTTLE_TARGET_CONCURRENCY = 4.0
 # Enable showing throttling stats for every response received:
 #AUTOTHROTTLE_DEBUG = False
 

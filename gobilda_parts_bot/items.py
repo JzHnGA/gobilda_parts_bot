@@ -9,5 +9,6 @@ import scrapy
 class Product(scrapy.Item):
     name = scrapy.Field() # formal name of the product
     sku = scrapy.Field() # Stock keeping unit number
+    url = scrapy.Field() # product page the files came from
     file_urls = scrapy.Field()
     files = scrapy.Field()
