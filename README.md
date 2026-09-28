@@ -12,15 +12,15 @@ pip install -r requirements.txt
 ```
 > On Windows, activate with `.venv\Scripts\activate` instead.
 
-2. Make sure you have a valid `FILES_STORE` defined in `settings.py`. By default, files go into a folder at the root of this repository called `models` (Scrapy creates it if it doesn't exist):
+2. Make sure you have a valid `FILES_STORE` defined in `settings.py`. By default, files go into a folder at the root of this repository called `models.nosync` (Scrapy creates it if it doesn't exist):
 ```
 ├───gobilda_parts_bot
 │   ├───spiders
 │   │   └───__pycache__
 │   └───__pycache__
-└───models  <-- what you need to make 
+└───models.nosync  <-- CAD files end up here
 ```
-> Feel free to change `FILES_STORE` to whatever suits your needs
+> The `.nosync` ending stops iCloud Drive from uploading the ~8 GB of models if the repo lives in a synced folder like `Documents`. Feel free to change `FILES_STORE` to whatever suits your needs
 
 3. set `SKU_FILE_NAMES` (also defined in `settings.py`). By default, file names are the full product name as displayed on the goBILDA website. These names are long, which can cause problems with uploading to Fusion. To get filenames that consist only of the part's SKU, set `SKU_FILE_NAMES` to `True`.
 
@@ -28,48 +28,14 @@ pip install -r requirements.txt
 ```bash
 scrapy crawl parts
 ```
-5. Wait for the `FILES_STORE` to populate, and you are good to go!
-> Note: there will be some empty folders left behind in the models folder, like `full` and some with `assembly` in the name. Don't worry, nothing went wrong, I just didn't bother trying to find a simple solution to delete them.
+5. Wait for the `FILES_STORE` to populate, and you are good to go! A full crawl visits ~2,400 product pages and is throttled to be polite to the site, so expect it to take a while. At the end, the log lists every kit/bundle/merch product that was skipped, and the stats show `parts/cad_files` (files written), `parts/duplicates_removed`, and `parts/no_cad_in_download` (downloads that only contained software or docs).
 
 ## How it works
-The goBILDA website is organized with repetitive product grid items that a web scraper can easily detect and follow to an indiviudal product page. The spider, responsible for crawling the website and downloading the `.STEP` files, starts at a couple main URLS on the goBILDA website to try and get as many parts as possible downloaded while ommitting repeats, merch, and kits.
-```python
-	start_urls = [
-		'https://www.gobilda.com/motion',
-		'https://www.gobilda.com/structure/',
-		'https://www.gobilda.com/electronics/',
-		'https://www.gobilda.com/hardware/',
-	]
-```
-For every page, the spider's `parse()` method is called:
-```python
-	def parse(self, response):
-        # Get the link attribute from a product box
-		partsList = response.css('li.product a')
-		if partsList:
-			# Sometimes, catalog pages are within others, so we have to recursively
-			# go through each page to get to actual parts
-			yield from response.follow_all(partsList, self.parse)
-		else:
-			# We are at an actual part page, with the step file,
-			# so we process the actual values scraped from the page
-			yield self.parse_product_page(response)
-```
-Since some of the parts catalogs contain sub-catalogs within them, we have to do some recursion in order to get to each individual part.
+The spider reads goBILDA's product sitemap (`https://www.gobilda.com/xmlsitemap.php`), which lists every product on the site, so no part is missed because it sits in an unusual category. Each product page is passed to `parse_product_page()`, which:
+- skips pages with no `.STEP` download (`a.ext-zip`)
+- skips kits, bundles and merch: products whose top-level breadcrumb is `KITS` or `MERCH`, or whose name or breadcrumbs mention a bundle, FTC kit, starter kit or chassis kit. Their CAD files are assemblies that repeat individual parts. Small "kits" like standoff or tensioner kits are real parts and are kept.
+- otherwise records the part's name, SKU and every CAD download link
 
-Once we are the product page, we get the name of the part, the sku number (currently not used for anything), and the `.STEP` file:
-```python
-	def parse_product_page(self, response):
-		step_file = response.css('a.ext-zip::attr(href)').get()
-		name = response.css( 'h1.productView-title::text').get()
-		if step_file and 'Bundle' not in name: # bundles will contain repeats, we don't want that
-			loader = ItemLoader(Product(), response=response)
-			loader.add_css('sku', 'span.productView-sku-input::text')
-			loader.add_value('file_urls', [f'https://www.gobilda.com{step_file}'])
-			loader.add_value('name', name)
-			return loader.load_item()
-```
-
-After that, its a relatively simple matter of downloading the zipped `.STEP` file, extracting the file, deleting the zip, and renaming the file. One thing to note: the file's names don't look exactly like the names displayed on the website, as I had to get rid of colons, spaces, and other forbidden characters to get a clean filename. 
+Scrapy's `FilesPipeline` downloads the zips, then `GobildaPartsBotPipeline` extracts **every** `.STEP`/`.stp` file from each zip (including zips nested inside it), ignores software/docs, and deletes the zip. A single-file zip becomes `<name>.STEP`; a multi-file zip becomes `<name>__<file>.STEP` for each file. If two parts would get the same filename, the SKU (or a number) is appended so nothing is overwritten. At the end of the crawl, byte-identical files (e.g. hardware packs that repeat individual parts) are removed, keeping the individual part's file. One thing to note: the file's names don't look exactly like the names displayed on the website, as I had to get rid of colons, spaces, and other forbidden characters to get a clean filename. 
 
 > Note: When I uploaded the complete parts folder to Fusion 360 (my CAD software of choice), it said 10 out of the 80 models failed to upload. I'm not sure which ones are the culprits, or if it is just Fusion being fusion,but create an issue or pull request if you've found the problem and/or solution. 
