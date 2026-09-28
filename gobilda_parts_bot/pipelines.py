@@ -5,7 +5,6 @@
 
 
 # useful for handling different item types with a single interface
-from genericpath import exists
 import os
 import re
 from itemadapter import ItemAdapter
@@ -26,13 +25,13 @@ class GobildaPartsBotPipeline:
             # element of the list to get the actual string data
             name = adapter['sku'][0] if SKU_FILE_NAMES else get_valid_filename(adapter['name'][0])
 
-            zip_path = f'{FILES_STORE}/{path}' 
-            if exists(zip_path):
+            zip_path = os.path.join(FILES_STORE, path)
+            if os.path.exists(zip_path):
                 with zipfile.ZipFile(zip_path, 'r') as zip:
                     file_in_zip = zip.namelist()[0] # Should be only 1 file in zip
                     
                     unzipped_path = zip.extract(file_in_zip, FILES_STORE)
-                    os.rename(unzipped_path, FILES_STORE + '/' + name + '.STEP')
+                    os.rename(unzipped_path, os.path.join(FILES_STORE, name + '.STEP'))
 
                 os.remove(zip_path)
         return item

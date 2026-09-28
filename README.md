@@ -4,13 +4,15 @@ A [ Scrapy ](https://scrapy.org/) spider written in python that scrapes almost t
 
 ## How to Run
 
-1. Install [ scrapy ](https://scrapy.org/) and [ tqdm ](https://tqdm.github.io/) (assuming you already have python installed)
-```cmd
-pip install scrapy tqdm
+1. Create a [ virtualenv ](https://docs.python.org/3/tutorial/venv.html) and install [ scrapy ](https://scrapy.org/) and [ tqdm ](https://tqdm.github.io/) (assuming you already have python 3 installed)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
-> Tip: if the installation fails, you might want to try installing scrapy in a [ virtualenv ](https://docs.python.org/3/tutorial/venv.html)
+> On Windows, activate with `.venv\Scripts\activate` instead.
 
-2. Make sure you have a valid `FILES_STORE` defined in `settings.py`. By default, you will have to create a folder at the root of this repository called `models`:
+2. Make sure you have a valid `FILES_STORE` defined in `settings.py`. By default, files go into a folder at the root of this repository called `models` (Scrapy creates it if it doesn't exist):
 ```
 ├───gobilda_parts_bot
 │   ├───spiders
@@ -23,7 +25,7 @@ pip install scrapy tqdm
 3. set `SKU_FILE_NAMES` (also defined in `settings.py`). By default, file names are the full product name as displayed on the goBILDA website. These names are long, which can cause problems with uploading to Fusion. To get filenames that consist only of the part's SKU, set `SKU_FILE_NAMES` to `True`.
 
 4. Run the `parts` spider:
-```cmd
+```bash
 scrapy crawl parts
 ```
 5. Wait for the `FILES_STORE` to populate, and you are good to go!

@@ -1,4 +1,3 @@
-from msilib.schema import File
 import scrapy
 from scrapy.loader import ItemLoader
 from gobilda_parts_bot.items import Product
